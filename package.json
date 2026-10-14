@@ -8,13 +8,36 @@
     "show-me-the-receipts": "bin/receipts.js"
   },
   "exports": "./src/index.js",
-  "files": ["bin", "src", "hooks", ".claude-plugin", "README.md", "LICENSE"],
+  "files": [
+    "bin",
+    "src",
+    "hooks",
+    ".claude-plugin",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "test": "node --test test/"
   },
   "engines": {
     "node": ">=18"
   },
-  "keywords": ["ai", "agent", "claude-code", "coding-agent", "verification", "receipts", "hooks"],
-  "license": "MIT"
+  "keywords": [
+    "ai",
+    "agent",
+    "claude-code",
+    "coding-agent",
+    "verification",
+    "receipts",
+    "hooks"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xshieldai/show-me-the-receipts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/xshieldai/show-me-the-receipts/issues"
+  },
+  "homepage": "https://github.com/xshieldai/show-me-the-receipts#readme"
 }

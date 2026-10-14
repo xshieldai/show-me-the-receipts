@@ -103,4 +103,4 @@ Requires Node 18 or later. No dependencies. Works with Claude Code transcripts t
 
 ## Licence
 
-MIT. Made by [ANKR](https://ankr.in).
+MIT. Made by [xShieldAI](https://xshieldai.com), part of [ANKR](https://ankr.in).
