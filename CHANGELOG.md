@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1
+- A claim inside quotation marks is quoted, not made. Found live on pull request #1, where the
+  corrected description quoted the removed false claim and the Action graded the quote.
+
 ## 0.4.0
 - GitHub Action: grades the claims in a pull request's description against the pull request
   itself (its diff, its code, and the base branch's configured commands, re-run).
