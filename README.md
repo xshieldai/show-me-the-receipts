@@ -56,7 +56,8 @@ Now, when Claude Code tries to finish with a **FALSE** or **STALE** claim, it is
 with the verdict and told to prove the claim or correct it. If the claim still doesn't hold after
 that one retry, the agent is allowed to stop and you see the verdict. It never loops, and if the
 checker itself breaks, it gets out of the way. Add `--strict` to also send the agent back on
-**NO RECEIPT**.
+**NO RECEIPT**, including a hedged claim ("tests should pass now") or a bare "Done!" that names
+nothing checkable. Without `--strict`, those are listed in the report, never counted as passed.
 
 The install keeps your existing hooks, writes a backup (`settings.json.before-receipts`), and does
 nothing if the hook is already there. The repository is also a Claude Code plugin (`hooks/hooks.json`).
