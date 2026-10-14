@@ -2,6 +2,10 @@
 
 **Your AI coding agent says it's done. Show me the receipts.**
 
+![show-me-the-receipts grading a demo session: one claim proven, one false, one stale, one with no receipt](https://raw.githubusercontent.com/xshieldai/show-me-the-receipts/main/docs/demo.gif)
+
+<sub>A demo session ([`examples/demo-session.jsonl`](examples/demo-session.jsonl)), graded by the real tool. The GIF is drawn from that run by [`scripts/make-demo-gif.py`](scripts/make-demo-gif.py), so anyone can rebuild it.</sub>
+
 Agents end their turn with claims: *"All 42 tests pass"*, *"The build succeeds"*,
 *"`exportCsv()` is wired into the toolbar"*. This tool reads the agent's last message, finds the
 claims it can check, and checks each one against what actually happened in the session and in
