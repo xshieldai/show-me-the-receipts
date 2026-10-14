@@ -1,0 +1,7 @@
+{
+  "rerun": true,
+  "timeoutSec": 300,
+  "commands": {
+    "test": "npm test"
+  }
+}

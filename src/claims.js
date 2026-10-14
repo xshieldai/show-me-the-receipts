@@ -9,9 +9,11 @@ const SYMBOL = /`([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)(?:\(\))?`/g;
 
 export function splitSentences(text) {
   const out = [];
-  const withoutCode = text.replace(/```[\s\S]*?```/g, ' ');
+  const withoutCode = text.replace(/```[\s\S]*?```/g, ' ').replace(/<!--[\s\S]*?-->/g, ' ');
   for (const raw of withoutCode.split(/\n+/)) {
-    const line = raw.replace(/^\s*(?:[-*+]|\d+[.)])\s+/, '').replace(/^#+\s*/, '').trim();
+    let line = raw.replace(/^\s*(?:[-*+]|\d+[.)])\s+/, '').replace(/^#+\s*/, '').trim();
+    if (/^\[ \]/.test(line)) continue; // an unticked box claims nothing
+    line = line.replace(/^\[[xX]\]\s*/, ''); // a ticked box is a claim
     if (!line) continue;
     for (const s of line.split(/(?<=[.!?])\s+(?=[A-Z`*✅])/)) {
       const t = s.trim();

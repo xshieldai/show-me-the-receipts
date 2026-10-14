@@ -78,6 +78,39 @@ passed before a later edit, or a count that doesn't match all come out FALSE if 
 fails now. Each command runs at most once per check. Only the commands in this file are ever run,
 never anything from the transcript. Use `--no-rerun` to skip it.
 
+## Pull requests: the GitHub Action
+
+Agents (and people) write claims in pull request descriptions: "All tests pass", "Updated
+`src/parse.ts`", a ticked "- [x] Ran the tests". The Action checks them against the pull request
+itself and posts one receipts comment, updated in place:
+
+```yaml
+# .github/workflows/receipts.yml
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  receipts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: xshieldai/show-me-the-receipts@v0.4.0
+```
+
+- **"Updated `file`"** is checked against the pull request's own diff. A file it never touches is FALSE.
+- **"`fn()` is wired in"** is checked by searching the pull request's code.
+- **Tests, build, lint, typecheck** are settled by running the commands in `receipts.config.json`
+  **from the base branch**, so a pull request cannot change what is run to judge it.
+- The check fails on a FALSE claim. `fail-on: no-receipt` is stricter; `fail-on: never` only reports.
+- Use the `pull_request` trigger. The Action refuses `pull_request_target`, which would run a
+  fork's code with a write token and secrets. A fork's token is read-only, so for forks the
+  receipts are in the job summary instead of a comment.
+
 ## What it checks
 
 | claim | example | evidence |

@@ -237,7 +237,7 @@ function existsAnywhere(file, repo) {
 
 // ---------- C4 wired / called ----------
 
-function checkWired(claim, repo) {
+export function checkWired(claim, repo) {
   if (!repo) return { verdict: NO_RECEIPT, why: 'no repository to search' };
   const name = claim.symbol.split('.').pop();
   if (!/^[A-Za-z_$][\w$]*$/.test(name)) return { verdict: NO_RECEIPT, why: 'not a plain name' };

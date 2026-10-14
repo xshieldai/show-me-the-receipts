@@ -1,0 +1,25 @@
+name: 'show-me-the-receipts'
+description: "Check the claims in a pull request's description (tests pass, file updated, wired in) against the pull request itself."
+author: 'xShieldAI'
+branding:
+  icon: 'check-square'
+  color: 'green'
+inputs:
+  token:
+    description: 'Token used to post one receipts comment on the pull request (updated in place). A fork pull request gets a read-only token; the job summary is then the record.'
+    default: ${{ github.token }}
+  fail-on:
+    description: '"false" (default): fail the check when a claim is FALSE. "no-receipt": also fail when a claim is not proven. "never": report only.'
+    default: 'false'
+  comment:
+    description: 'Post the receipts as a pull request comment ("true" or "false").'
+    default: 'true'
+runs:
+  using: 'composite'
+  steps:
+    - shell: bash
+      env:
+        INPUT_TOKEN: ${{ inputs.token }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_COMMENT: ${{ inputs.comment }}
+      run: node "$GITHUB_ACTION_PATH/action/pr-action.js"
