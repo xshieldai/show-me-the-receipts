@@ -41,7 +41,23 @@ That output is real: it is this tool run on [`examples/demo-session.jsonl`](exam
 When unsure, it says NO RECEIPT, never FALSE. A claim is called false only when there is a line
 that contradicts it.
 
-## What it checks (v0.1)
+## Make the agent prove it: the Stop hook
+
+```bash
+npx show-me-the-receipts install          # this project (.claude/settings.json)
+npx show-me-the-receipts install --user   # every project (~/.claude/settings.json)
+```
+
+Now, when Claude Code tries to finish with a **FALSE** or **STALE** claim, it is sent back once
+with the verdict and told to prove the claim or correct it. If the claim still doesn't hold after
+that one retry, the agent is allowed to stop and you see the verdict. It never loops, and if the
+checker itself breaks, it gets out of the way. Add `--strict` to also send the agent back on
+**NO RECEIPT**.
+
+The install keeps your existing hooks, writes a backup (`settings.json.before-receipts`), and does
+nothing if the hook is already there. The repository is also a Claude Code plugin (`hooks/hooks.json`).
+
+## What it checks
 
 | claim | example | evidence |
 |---|---|---|
@@ -81,8 +97,6 @@ Requires Node 18 or later. No dependencies. Works with Claude Code transcripts t
 
 ## Roadmap
 
-- A Claude Code **Stop hook**, so the agent cannot finish with a FALSE or STALE claim: it has to
-  go and prove or correct it first.
 - More claim types ("no errors", counts like "fixed 12 warnings").
 - Transcripts from other agents.
 - Optional signed receipts, so a team can check what an agent did later.

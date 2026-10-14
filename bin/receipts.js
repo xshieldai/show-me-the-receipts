@@ -4,13 +4,17 @@
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { readHookInput, runStopHook } from '../src/hook.js';
 import { exitCodeFor, grade, latestTranscript, render } from '../src/index.js';
+import { install } from '../src/install.js';
 
 const HELP = `show-me-the-receipts: check what your coding agent says it did.
 
 Usage:
   receipts last                 grade the newest Claude Code session for this directory
   receipts <transcript.jsonl>   grade one session transcript
+  receipts install [--user]     add the Stop hook to .claude/settings.json (or ~/.claude with --user)
+  receipts hook [--strict]      run as a Claude Code Stop hook (reads the hook's JSON on stdin)
 
 Options:
   --repo <dir>   repository to search (default: the session's working directory)
@@ -35,6 +39,16 @@ function main(argv) {
   const flag = (n) => args.includes(n);
   const value = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : undefined; };
   const positional = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--repo');
+
+  if (positional[0] === 'hook') {
+    const { stdout, code } = runStopHook(readHookInput(), { strict: flag('--strict') });
+    if (stdout) process.stdout.write(stdout + '\n');
+    return code;
+  }
+  if (positional[0] === 'install') {
+    console.log(install({ user: flag('--user'), strict: flag('--strict') }));
+    return 0;
+  }
 
   let path = positional[0];
   if (path === 'last') {

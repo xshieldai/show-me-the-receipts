@@ -1,0 +1,12 @@
+{
+  "description": "show-me-the-receipts: send the agent back once when its final message claims something the session does not support",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/receipts.js\" hook", "timeout": 60 }
+        ]
+      }
+    ]
+  }
+}

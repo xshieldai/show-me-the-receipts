@@ -9,7 +9,8 @@ export { exitCodeFor, render } from './report.js';
 
 export function grade(transcriptPath, opts = {}) {
   const { events, cwd, sessionId } = parseTranscript(transcriptPath);
-  const final = finalMessage(events);
+  // A Stop hook may hand us the final message before the transcript has it on disk.
+  const final = opts.finalText ? { text: opts.finalText, index: events.length } : finalMessage(events);
   const { claims, ungraded, sentenceCount } = extractClaims(final.text);
   const repo = opts.repo ?? repoRoot(cwd);
   const results = checkClaims(claims, events, final.index, { repo });

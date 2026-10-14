@@ -35,15 +35,16 @@ export function extractClaims(text) {
 
 function claimsIn(sentence) {
   const s = sentence.replace(/\*\*/g, '');
+  const plain = s.replace(/`/g, ''); // "`npm test` passes" is a test claim too
   if (HEDGE.test(s)) return [];
   const out = [];
 
   // C1 tests pass
   const tests =
-    /\b(?:all\s+)?(?:(\d[\d,]*)\s+)?(?:of\s+(?:the\s+)?\d[\d,]*\s+)?(?:unit\s+|integration\s+|e2e\s+|the\s+)?tests?\s+(?:now\s+|still\s+)?(?:pass(?:es|ed|ing)?|are\s+(?:passing|green)|(?:is|are)\s+green|succeed(?:s|ed)?|green)\b/i.exec(s) ||
-    /\btest\s+suite\s+(?:now\s+)?(?:pass(?:es|ed)?|is\s+green)\b/i.exec(s) ||
-    /\b(\d[\d,]*)\s*\/\s*\d[\d,]*\s+tests?\s+pass/i.exec(s) ||
-    /\b(\d[\d,]*)\s+pass(?:ed|ing)?,\s*0\s+fail/i.exec(s);
+    /\b(?:all\s+)?(?:(\d[\d,]*)\s+)?(?:of\s+(?:the\s+)?\d[\d,]*\s+)?(?:unit\s+|integration\s+|e2e\s+|the\s+)?tests?\s+(?:now\s+|still\s+)?(?:pass(?:es|ed|ing)?|are\s+(?:passing|green)|(?:is|are)\s+green|succeed(?:s|ed)?|green)\b/i.exec(plain) ||
+    /\btest\s+suite\s+(?:now\s+)?(?:pass(?:es|ed)?|is\s+green)\b/i.exec(plain) ||
+    /\b(\d[\d,]*)\s*\/\s*\d[\d,]*\s+tests?\s+pass/i.exec(plain) ||
+    /\b(\d[\d,]*)\s+pass(?:ed|ing)?,\s*0\s+fail/i.exec(plain);
   if (tests && !NEGATION.test(s.replace(/0\s+fail\w*/gi, ''))) {
     const n = tests[1] ? Number(tests[1].replace(/,/g, '')) : null;
     out.push({ type: 'tests-pass', text: sentence, count: n });

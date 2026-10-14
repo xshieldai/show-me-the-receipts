@@ -266,3 +266,70 @@ test('a relative shell write matches an absolute path in the claim', () => {
   const p = session('/nowhere').prompt('go').bash('cd /root; cat > ncert-filter.mjs <<EOF\nx\nEOF', '').say('I moved it into one shared module, `/root/ncert-filter.mjs`.').write();
   assert.deepEqual(verdicts(grade(p, { repo: null })), ['PROVEN']);
 });
+
+// ---------- P2: the Stop hook ----------
+
+import { spawnSync } from 'node:child_process';
+import { runStopHook } from '../src/hook.js';
+import { install } from '../src/install.js';
+import { readFileSync, existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+const BIN = fileURLToPath(new URL('../bin/receipts.js', import.meta.url));
+
+function failingSession() {
+  return session('/nowhere').prompt('go').bash('npm test', 'Tests: 1 failed, 41 passed, 42 total', 1).write();
+}
+
+test('hook blocks once on a FALSE claim, using last_assistant_message (the transcript may lag)', () => {
+  const out = runStopHook({ transcript_path: failingSession(), last_assistant_message: 'All 42 tests pass.', stop_hook_active: false });
+  const j = JSON.parse(out.stdout);
+  assert.equal(j.decision, 'block');
+  assert.match(j.reason, /FALSE: "All 42 tests pass\."/);
+  assert.equal(out.code, 0);
+});
+
+test('hook lets the agent stop on the retry and tells the person instead', () => {
+  const out = runStopHook({ transcript_path: failingSession(), last_assistant_message: 'All 42 tests pass.', stop_hook_active: true });
+  const j = JSON.parse(out.stdout);
+  assert.equal(j.decision, undefined);
+  assert.match(j.systemMessage, /still unproven/);
+});
+
+test('hook stays silent when nothing is false, and NO RECEIPT blocks only with --strict', () => {
+  const p = session('/nowhere').prompt('go').edit('/x/a.js').write();
+  assert.equal(runStopHook({ transcript_path: p, last_assistant_message: 'All tests pass.' }).stdout, '');
+  assert.equal(JSON.parse(runStopHook({ transcript_path: p, last_assistant_message: 'All tests pass.' }, { strict: true }).stdout).decision, 'block');
+});
+
+test('hook never traps the agent when it breaks', () => {
+  assert.deepEqual(runStopHook({ transcript_path: '/no/such/file.jsonl', last_assistant_message: 'Tests pass.' }), { stdout: '', code: 0 });
+  assert.deepEqual(runStopHook({}), { stdout: '', code: 0 });
+});
+
+test('the hook reads stdin from a socket (how the harness sends it) and from a pipe', () => {
+  const payload = JSON.stringify({ transcript_path: failingSession(), last_assistant_message: 'All 42 tests pass.', stop_hook_active: false });
+  // Node's child stdio "pipe" is a socketpair on Unix: this is the socket case.
+  const viaSocket = spawnSync(process.execPath, [BIN, 'hook'], { input: payload, encoding: 'utf8' });
+  assert.equal(JSON.parse(viaSocket.stdout).decision, 'block');
+  const viaPipe = spawnSync('sh', ['-c', `printf '%s' "$P" | "${process.execPath}" "${BIN}" hook`], { env: { ...process.env, P: payload }, encoding: 'utf8' });
+  assert.equal(JSON.parse(viaPipe.stdout).decision, 'block');
+});
+
+test('install adds the hook once, keeps what was there, and backs it up', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'smtr-i-'));
+  mkdirSync(join(dir, '.claude'));
+  writeFileSync(join(dir, '.claude/settings.json'), JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: 'command', command: 'echo mine' }] }] }, model: 'x' }));
+  install({ dir });
+  const s = JSON.parse(readFileSync(join(dir, '.claude/settings.json'), 'utf8'));
+  assert.equal(s.model, 'x');
+  assert.equal(s.hooks.Stop.length, 2);
+  assert.ok(existsSync(join(dir, '.claude/settings.json.before-receipts')));
+  assert.match(install({ dir }), /Already installed/);
+  assert.equal(JSON.parse(readFileSync(join(dir, '.claude/settings.json'), 'utf8')).hooks.Stop.length, 2);
+});
+
+test('a command name in backticks still reads as a test claim (found in a live run)', () => {
+  const { claims } = extractClaims('`npm test` passes (1 of 1, exit 0), and `mul(4, 3)` returns 12.');
+  assert.deepEqual(claims.map((c) => c.type), ['tests-pass']);
+});
