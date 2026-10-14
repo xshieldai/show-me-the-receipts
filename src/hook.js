@@ -19,6 +19,7 @@ export function runStopHook(input, { strict = false } = {}) {
   try {
     if (!input.transcript_path) return { stdout: '', code: 0 };
     const report = grade(input.transcript_path, {
+      strict,
       finalText: typeof input.last_assistant_message === 'string' ? input.last_assistant_message : undefined,
     });
     const blocking = report.results.filter((r) => r.verdict === FALSE || r.verdict === STALE || (strict && r.verdict === NO_RECEIPT));

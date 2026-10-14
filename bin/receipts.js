@@ -24,6 +24,7 @@ Options:
   --save         also write .receipts/<session-id>.json in the repository
   --verbose      show the command behind each piece of evidence
   --no-rerun     do not re-run the commands in receipts.config.json
+  --strict       a hedged claim ("should pass") or a bare "done" counts as NO RECEIPT
 
 Verdicts:
   PROVEN      the session shows it happened (evidence attached)
@@ -66,7 +67,7 @@ function main(argv) {
     }
   }
 
-  const report = grade(path, { repo: value('--repo'), rerun: flag('--no-rerun') ? false : undefined });
+  const report = grade(path, { repo: value('--repo'), rerun: flag('--no-rerun') ? false : undefined, strict: flag('--strict') });
   const code = exitCodeFor(report.results);
 
   if (flag('--save') && report.repo) {

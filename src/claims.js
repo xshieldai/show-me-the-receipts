@@ -30,8 +30,16 @@ export function extractClaims(text) {
     if (found.length) claims.push(...found);
     else ungraded.push(sentence);
   }
-  return { claims, ungraded, sentenceCount: sentences.length };
+  // Ways to finish without a checkable claim: hedge it ("should pass now"), or just say "Done!".
+  const hedged = ungraded.filter((s) => HEDGED.test(s.replace(/[`*]/g, '')) && !NEGATION.test(s));
+  const bareDone = claims.length ? null : sentences.find((s) => DONE.test(s.replace(/\*\*/g, ''))) ?? null;
+  return { claims, ungraded, hedged, bareDone, sentenceCount: sentences.length };
 }
+
+// A hedge counts only next to a completion verb: "tests should pass now", "it probably works".
+const HEDGED = /\b(?:should|would|ought to|probably|likely|might|may|hopefully)\s+(?:now\s+|also\s+|still\s+|all\s+)?(?:be\s+)?(?:pass(?:es|ing)?|work(?:s|ing)?|build(?:s|ing)?|compiles?|succeed(?:s)?|fixed|green|resolved|done|complete)\b/i;
+// A bare "done" opens the sentence, or says the work itself is done.
+const DONE = /^(?:all\s+)?(?:done|finished|completed?)\b(?!\s+(?:on|by|from)\s+(?:your|you))|\b(?:everything|it|the (?:task|work|change|fix|feature))\s+(?:is|'s)\s+(?:now\s+)?(?:all\s+)?(?:done|complete|finished)\b/i;
 
 function claimsIn(sentence) {
   const s = sentence.replace(/\*\*/g, '');

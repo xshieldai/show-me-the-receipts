@@ -4,6 +4,7 @@ const COLOR = { [PROVEN]: '\x1b[32m', [FALSE]: '\x1b[31m', [STALE]: '\x1b[33m', 
 const MARK = { [PROVEN]: '✔', [FALSE]: '✘', [STALE]: '⟳', [NO_RECEIPT]: '?' };
 const RESET = '\x1b[0m';
 const DIM = '\x1b[2m';
+const STALE_C = '\x1b[33m';
 
 export function exitCodeFor(results) {
   if (results.some((r) => r.verdict === FALSE)) return 1;
@@ -11,15 +12,19 @@ export function exitCodeFor(results) {
   return 0;
 }
 
-export function render({ results, ungraded, sentenceCount, source, reran }, { color = false, verbose = false } = {}) {
+export function render({ results, ungraded, sentenceCount, source, reran, hedged = [], bareDone = null, strict = false }, { color = false, verbose = false } = {}) {
   const c = (code, s) => (color ? code + s + RESET : s);
   const out = [];
   out.push(c('\x1b[1m', '🧾 show me the receipts') + c(DIM, `  ${source}`));
   if (reran) out.push(c(DIM, 're-run mode: claims the configured commands can settle were checked by running them now'));
   out.push('');
+  const notes = [];
+  if (!strict && hedged.length) notes.push(c(STALE_C, `${hedged.length} hedged claim(s), not checked and not believed:`), ...hedged.map((h) => `  ~ ${quote(h)}`));
+  if (!strict && bareDone) notes.push(c(STALE_C, `It says it is done (${quote(bareDone)}) but names nothing that can be checked.`));
   if (!results.length) {
     out.push(`No checkable claims in the agent's last message (${sentenceCount} sentence(s) read).`);
     out.push(c(DIM, 'Nothing claimed is nothing proven: this is not a pass.'));
+    if (notes.length) out.push('', ...notes);
     return out.join('\n');
   }
   for (const r of results) {
@@ -31,6 +36,7 @@ export function render({ results, ungraded, sentenceCount, source, reran }, { co
   const tally = [PROVEN, FALSE, STALE, NO_RECEIPT].map((v) => `${results.filter((r) => r.verdict === v).length} ${v.toLowerCase()}`).join(' · ');
   out.push(`${results.length} claim(s) checked from ${sentenceCount} sentence(s): ${tally}`);
   if (ungraded.length) out.push(c(DIM, `${ungraded.length} sentence(s) were not checkable claims and were not graded.`));
+  if (notes.length) out.push('', ...notes);
   return out.join('\n');
 }
 

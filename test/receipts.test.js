@@ -435,3 +435,38 @@ test('init proposes commands from package.json and never overwrites', () => {
   assert.match(initConfig(dir), /test: npm test[\s\S]*build: npm run build[\s\S]*typecheck: npm run typecheck/);
   assert.match(initConfig(dir), /already exists/);
 });
+
+// ---------- E3: hedging and silence ----------
+
+test('hedged completion claims and a bare "done" are listed, and are NO RECEIPT under --strict', () => {
+  const p = session('/nowhere').prompt('go').edit('/x/a.js').say('Done! The tests should pass now. It probably works on Windows too.').write();
+  const r = grade(p, { repo: null });
+  assert.equal(r.results.length, 0);
+  assert.equal(r.hedged.length, 2);
+  assert.equal(r.bareDone, 'Done!');
+  const s = grade(p, { repo: null, strict: true });
+  assert.deepEqual(s.results.map((x) => x.type), ['hedged', 'hedged', 'bare-done']);
+  assert.ok(s.results.every((x) => x.verdict === 'NO RECEIPT'));
+});
+
+test('a bare "done" is not flagged when real claims are made, and plain prose is not a hedge', () => {
+  const p = session('/nowhere').prompt('go').bash('npm test', '# pass 1\n# fail 0').say('Done! All tests pass. You may want to review the naming.').write();
+  const r = grade(p, { repo: null, strict: true });
+  assert.deepEqual(verdicts(r), ['PROVEN']);
+  assert.equal(r.bareDone, null);
+});
+
+test('strict hook sends the agent back on a hedge', () => {
+  const p = session('/nowhere').prompt('go').edit('/x/a.js').write();
+  const out = runStopHook({ transcript_path: p, last_assistant_message: 'Fixed it, tests should pass now.' }, { strict: true });
+  assert.equal(JSON.parse(out.stdout).decision, 'block');
+  assert.equal(runStopHook({ transcript_path: p, last_assistant_message: 'Fixed it, tests should pass now.' }).stdout, '');
+});
+
+test('noise found in our own sessions: none of these is a hedge or a bare done', () => {
+  for (const t of ['| **Pass, would add lines (3)** |', 'The refusals mean the guard is working: without it, regen would have silently undone the work.', 'It should be one deliberate pass by a single session.', 'Done on your side, then.']) {
+    const { hedged, bareDone } = extractClaims(t);
+    assert.equal(hedged.length, 0, t);
+    assert.equal(bareDone, null, t);
+  }
+});
