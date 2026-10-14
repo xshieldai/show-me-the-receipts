@@ -1,0 +1,83 @@
+# Publish show-me-the-receipts to npm with provenance, from a tag v<version>.
+# A manual run is a rehearsal: it tests and packs, and publishes nothing.
+#
+# AUTH. While the name is not on the registry, the first version is STAGED with the NPM_TOKEN
+# secret (a stage-capable npm token) and goes live only when a person approves it with 2FA at
+# npmjs.com -> Staged Packages. After that, add a Trusted Publisher on the package's page
+# (GitHub Actions · xshieldai/show-me-the-receipts · release.yml) and later releases need no token.
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # No registry-url: it would write an .npmrc with a placeholder token that wins over OIDC.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@latest && npm --version
+
+      - name: Refuse a tag that disagrees with package.json
+        if: github.ref_type == 'tag'
+        run: |
+          V=$(node -p "require('./package.json').version")
+          [ "${GITHUB_REF_NAME#v}" = "$V" ] || { echo "tag $GITHUB_REF_NAME does not match version $V - refusing"; exit 1; }
+
+      - name: Test
+        run: node --test test/
+
+      - name: Refuse if a tracked file changed
+        run: |
+          [ -z "$(git status --porcelain)" ] || { echo "the tree is not clean - refusing"; git status --porcelain; exit 1; }
+
+      # Install the packed tarball the way a stranger would, and run it.
+      - name: Refuse if the packed tool does not run
+        run: |
+          mkdir "$RUNNER_TEMP/packed" "$RUNNER_TEMP/consumer"
+          npm pack --pack-destination "$RUNNER_TEMP/packed" > /dev/null
+          cd "$RUNNER_TEMP/consumer" && npm init -y > /dev/null
+          npm install --ignore-scripts "$(ls "$RUNNER_TEMP"/packed/*.tgz)"
+          npx receipts "$GITHUB_WORKSPACE/examples/demo-session.jsonl" && code=0 || code=$?
+          [ "$code" = "1" ] || { echo "the demo session should grade exit 1 (one FALSE claim), got $code - refusing"; exit 1; }
+
+      - name: Show what would ship
+        run: npm pack --dry-run
+
+      - name: Ask the registry whether the name exists yet
+        id: exists
+        if: github.ref_type == 'tag'
+        run: |
+          CODE=$(curl -s -o /dev/null -w '%{http_code}' https://registry.npmjs.org/show-me-the-receipts)
+          case "$CODE" in
+            200) echo "new=0" >> "$GITHUB_OUTPUT" ;;
+            404) echo "a NEW name: the first version will be staged for a person to approve"; echo "new=1" >> "$GITHUB_OUTPUT" ;;
+            *) echo "the registry answered HTTP $CODE - refusing to guess"; exit 1 ;;
+          esac
+
+      - name: Publish (trusted publishing, with provenance)
+        if: github.ref_type == 'tag' && steps.exists.outputs.new == '0'
+        run: npm publish --provenance --access public
+
+      - name: Stage the first version (a person approves it with 2FA)
+        if: github.ref_type == 'tag' && steps.exists.outputs.new == '1'
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          [ -n "$NPM_TOKEN" ] || { echo "a first publish needs the NPM_TOKEN secret (a stage-capable token) - refusing"; exit 1; }
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > "$HOME/.npmrc"
+          npm stage publish --provenance --access public
+          rm -f "$HOME/.npmrc"
+          echo "STAGED, not published. Approve it with 2FA at npmjs.com -> Staged Packages, then add the Trusted Publisher."
