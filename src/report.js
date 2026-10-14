@@ -29,7 +29,7 @@ export function render({ results, ungraded, sentenceCount, source, reran, hedged
   }
   for (const r of results) {
     out.push(`${c(COLOR[r.verdict], `${MARK[r.verdict]} ${r.verdict.padEnd(10)}`)} ${quote(r.text)}`);
-    out.push(`  ${c(DIM, '└')} ${r.why}${r.evidence?.line ? c(DIM, `  [transcript line ${r.evidence.line}]`) : ''}`);
+    out.push(`  ${c(DIM, '└')} ${r.why}${r.evidence?.line ? c(DIM, r.evidence.agent ? `  [subagent ${r.evidence.agent.slice(0, 8)}, line ${r.evidence.line}]` : `  [transcript line ${r.evidence.line}]`) : ''}`);
     if (verbose && r.evidence?.command) out.push(c(DIM, `    $ ${oneLine(r.evidence.command)}`));
   }
   out.push('');

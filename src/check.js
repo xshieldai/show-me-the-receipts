@@ -299,7 +299,7 @@ function gitGrep(repo, name) {
 }
 
 function ev(e) {
-  return { line: e.line, command: e.command, tool: e.tool, file: e.file, exitCode: e.result?.exitCode ?? null };
+  return { line: e.line, command: e.command, tool: e.tool, file: e.file, exitCode: e.result?.exitCode ?? null, ...(e.agent ? { agent: e.agent } : {}) };
 }
 
 export function repoRoot(dir) {
