@@ -92,11 +92,11 @@ function gradeRun(e) {
   const r = withEchoedExit(e, r0);
   const { passed, failed } = parseTestSummary(r.text);
   if (r.exitCode !== null && r.exitCode !== 0) return { outcome: 'failed', passed, detail: `exit code ${r.exitCode}${failed ? `, ${failed} failed` : ''}` };
-  if (failed && failed > 0) return { outcome: 'failed', passed, detail: `${failed} failed in the output${piped(e.command) ? ', the pipe hid the exit code' : ''}` };
-  if (r.exitCode === 0 && (r.echoed || !piped(e.command))) return { outcome: 'passed', passed, detail: `exit code 0${passed > 0 ? `, ${passed} passed` : ''}` };
+  if (failed && failed > 0) return { outcome: 'failed', passed, detail: `${failed} failed in the output${piped(e.command, r.text) ? ', the pipe hid the exit code' : ''}` };
+  if (r.exitCode === 0 && (r.echoed || !piped(e.command, r.text))) return { outcome: 'passed', passed, detail: `exit code 0${passed > 0 ? `, ${passed} passed` : ''}` };
   if (passed !== null && passed !== 0 && failed === 0) return { outcome: 'passed', passed, detail: `${passed >= 0 ? passed + ' passed, ' : ''}0 failed in the output` };
   if (passed !== null && passed > 0 && failed === null) return { outcome: 'passed', passed, detail: `${passed} passed in the output` };
-  return { outcome: 'unknown', detail: piped(e.command) ? 'the command was piped, so exit 0 belongs to the last command in the pipe, and the output shows no summary' : 'no summary in the output' };
+  return { outcome: 'unknown', detail: piped(e.command, r.text) ? 'the command was piped, so exit 0 belongs to the last command in the pipe, and the output shows no summary' : 'no summary in the output' };
 }
 
 // `cmd | tail; echo EXIT=${PIPESTATUS[0]}` prints the real exit code; trust it over the pipe's.
@@ -107,8 +107,10 @@ function withEchoedExit(e, r) {
   return { ...r, exitCode: Number(all[0][1]), echoed: true };
 }
 
-function piped(cmd) {
-  return /[^|]\|[^|]/.test(cmd) && !/pipefail/.test(cmd);
+function piped(cmd, output = '') {
+  if (/[^|]\|[^|]/.test(cmd) && !/pipefail/.test(cmd)) return true;
+  // `npm test` whose script pipes: npm echoes the script as "> node --test | tail -n 3", and its exit code is tail's.
+  return /^> .*[^|]\|[^|]/m.test(output) && !/pipefail/.test(output);
 }
 
 // ---------- C2 build / lint / typecheck ----------
@@ -131,7 +133,7 @@ function checkCommand(claim, before) {
     }
   }
   if (marker) return { verdict: FALSE, why: `the last ${claim.kind} run printed "${marker[0].trim()}"`, evidence: ev(e) };
-  if (r.exitCode === 0 && !piped(e.command)) return staleOr({ e, i }, before, 'exit code 0');
+  if (r.exitCode === 0 && !piped(e.command, r.text)) return staleOr({ e, i }, before, 'exit code 0');
   return { verdict: NO_RECEIPT, why: 'the command was piped and its output shows no error, but its own exit code was not seen', evidence: ev(e) };
 }
 

@@ -333,3 +333,12 @@ test('a command name in backticks still reads as a test claim (found in a live r
   const { claims } = extractClaims('`npm test` passes (1 of 1, exit 0), and `mul(4, 3)` returns 12.');
   assert.deepEqual(claims.map((c) => c.type), ['tests-pass']);
 });
+
+test('a pipe inside the npm script is a pipe too (npm echoes the script line)', () => {
+  const p = session('/nowhere').prompt('go')
+    .bash('npm test', '> calc@1.0.0 test\n> node --test | tail -n 3\n\n# skipped 0\n# todo 0\n# duration_ms 41.2')
+    .say('All tests pass.').write();
+  const r = grade(p, { repo: null });
+  assert.deepEqual(verdicts(r), ['NO RECEIPT']);
+  assert.match(r.results[0].why, /piped/);
+});
