@@ -9,6 +9,7 @@ import { basename } from 'node:path';
 import { FALSE, NO_RECEIPT, PROVEN, checkWired, samePath } from './check.js';
 import { extractClaims } from './claims.js';
 import { CONFIG, rerunClaims } from './rerun.js';
+import { emitReport } from './suite.js';
 
 export const MARKER = '<!-- show-me-the-receipts -->';
 
@@ -23,7 +24,9 @@ export function gradePullRequest({ body, repo, base, head = 'HEAD', runCommand }
   const cfg = baseConfig(repo, base);
   const reran = Boolean(cfg && cfg.rerun && Object.keys(cfg.commands).length);
   if (reran) results = rerunClaims(results, repo, cfg, runCommand);
-  return { results, ungraded, hedged, bareDone, sentenceCount, reran, changedCount: changed?.length ?? null };
+  const report = { results, ungraded, hedged, bareDone, sentenceCount, reran, changedCount: changed?.length ?? null };
+  emitReport(report, { source: 'pull_request' });
+  return report;
 }
 
 function checkChanged(claim, changed) {

@@ -111,6 +111,33 @@ jobs:
   fork's code with a write token and secrets. A fork's token is read-only, so for forks the
   receipts are in the job summary instead of a comment.
 
+## Subagents
+
+When the agent hands work to subagents, their transcripts (`<session>/subagents/agent-<id>.jsonl`)
+are read too. A test run or an edit made by a subagent counts as evidence for the main agent's
+claims, placed in time order, and is marked `[subagent <id>]` in the report. Work a background
+subagent does after the agent's final message is not counted.
+
+## With the xShieldAI suite
+
+Optional, and nothing runs unless you ask for it.
+
+- **Agentic Control Center events.** `setEventBus(bus)` takes the same bus as the `@xshieldai`
+  packages: each graded claim, and one summary per check, is emitted as a receipt
+  (`receipts.claim_graded`, `receipts.report_graded`). From the command line or the hook, set
+  `RECEIPTS_ACC_LOG=/path/acc.jsonl` (or pass `--acc-log`) to append the same receipts as JSON lines.
+- **HanumanG.** `toHanumanG(report)` (or `--hanumang`) gives the two
+  `@xshieldai/hanumang-mandate` fields this tool actually measures: `truthful_report.errors_reported`
+  and `return_with_proof.deviations_reported`, false when a claim is FALSE (or STALE, for
+  deviations). Before/after state and receipt fields are yours to add before scoring.
+
+```js
+import { grade, setEventBus, toHanumanG } from 'show-me-the-receipts';
+setEventBus({ emit: (receipt) => myBus.emit(receipt) });
+const report = grade('session.jsonl');
+const { inputs } = toHanumanG(report);
+```
+
 ## What it checks
 
 | claim | example | evidence |

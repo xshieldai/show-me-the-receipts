@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0
+- Subagents: their commands and edits, read from `<session>/subagents/`, are evidence for the
+  main agent's claims, merged by time.
+- xShieldAI suite bridge: optional Agentic Control Center receipts (`setEventBus`, `--acc-log`,
+  `RECEIPTS_ACC_LOG`) and the two HanumanG fields this tool measures (`toHanumanG`, `--hanumang`).
+
 ## 0.4.1
 - A claim inside quotation marks is quoted, not made. Found live on pull request #1, where the
   corrected description quoted the removed false claim and the Action graded the quote.

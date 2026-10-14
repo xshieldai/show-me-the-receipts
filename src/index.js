@@ -4,9 +4,11 @@ import { join } from 'node:path';
 import { checkClaims, repoRoot } from './check.js';
 import { extractClaims } from './claims.js';
 import { loadConfig, rerunClaims } from './rerun.js';
+import { emitReport } from './suite.js';
 import { finalMessage, parseTranscript } from './transcript.js';
 
 export { exitCodeFor, render } from './report.js';
+export { setEventBus, isBusWired, jsonlBus, toHanumanG } from './suite.js';
 
 export function grade(transcriptPath, opts = {}) {
   const { events, cwd, sessionId } = parseTranscript(transcriptPath);
@@ -24,7 +26,9 @@ export function grade(transcriptPath, opts = {}) {
     for (const text of hedged) results.push({ type: 'hedged', text, verdict: 'NO RECEIPT', why: 'a hedged completion claim: nothing was checked, so it is not believed' });
     if (bareDone) results.push({ type: 'bare-done', text: bareDone, verdict: 'NO RECEIPT', why: 'says it is done, but names nothing that can be checked' });
   }
-  return { reran, hedged, bareDone, strict: Boolean(opts.strict), results, ungraded, sentenceCount, sessionId, repo, source: transcriptPath, finalMessage: final.text };
+  const report = { reran, hedged, bareDone, strict: Boolean(opts.strict), results, ungraded, sentenceCount, sessionId, repo, source: transcriptPath, finalMessage: final.text };
+  emitReport(report);
+  return report;
 }
 
 // Claude Code keeps a project's sessions under ~/.claude/projects/<cwd with every non-alphanumeric as '->.

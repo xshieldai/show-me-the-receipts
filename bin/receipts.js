@@ -5,7 +5,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { readHookInput, runStopHook } from '../src/hook.js';
-import { exitCodeFor, grade, latestTranscript, render } from '../src/index.js';
+import { exitCodeFor, grade, jsonlBus, latestTranscript, render, setEventBus, toHanumanG } from '../src/index.js';
 import { install } from '../src/install.js';
 import { initConfig } from '../src/rerun.js';
 
@@ -24,6 +24,9 @@ Options:
   --save         also write .receipts/<session-id>.json in the repository
   --verbose      show the command behind each piece of evidence
   --no-rerun     do not re-run the commands in receipts.config.json
+  --hanumang     print the @xshieldai/hanumang-mandate axis fields this check measured, as JSON
+  --acc-log <f>  append every graded claim to <f> as Agentic Control Center receipts (JSON lines);
+                 the RECEIPTS_ACC_LOG environment variable does the same, also for the hook
   --strict       a hedged claim ("should pass") or a bare "done" counts as NO RECEIPT
 
 Verdicts:
@@ -42,7 +45,9 @@ function main(argv) {
   }
   const flag = (n) => args.includes(n);
   const value = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : undefined; };
-  const positional = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--repo');
+  const positional = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--repo' && args[i - 1] !== '--acc-log');
+  const accLog = value('--acc-log') ?? process.env.RECEIPTS_ACC_LOG;
+  if (accLog) setEventBus(jsonlBus(accLog));
 
   if (positional[0] === 'hook') {
     const { stdout, code } = runStopHook(readHookInput(), { strict: flag('--strict') });
@@ -77,6 +82,10 @@ function main(argv) {
     writeFileSync(file, JSON.stringify({ tool: 'show-me-the-receipts', checkedAt: new Date().toISOString(), transcript: path, exitCode: code, results: report.results, ungraded: report.ungraded }, null, 2) + '\n');
   }
 
+  if (flag('--hanumang')) {
+    console.log(JSON.stringify(toHanumanG(report), null, 2));
+    return code;
+  }
   if (flag('--json')) console.log(JSON.stringify({ exitCode: code, ...report }, null, 2));
   else console.log(render(report, { color: process.stdout.isTTY && !process.env.NO_COLOR, verbose: flag('--verbose') }));
   return code;
