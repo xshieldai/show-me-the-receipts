@@ -61,6 +61,22 @@ checker itself breaks, it gets out of the way. Add `--strict` to also send the a
 The install keeps your existing hooks, writes a backup (`settings.json.before-receipts`), and does
 nothing if the hook is already there. The repository is also a Claude Code plugin (`hooks/hooks.json`).
 
+## Re-run mode: don't trust the transcript, run it
+
+```bash
+npx show-me-the-receipts init     # writes receipts.config.json from your package.json scripts
+```
+
+```json
+{ "rerun": true, "timeoutSec": 300, "commands": { "test": "npm test", "build": "npm run build" } }
+```
+
+With this file in your repository, a claim about tests, build, lint or typecheck is settled by
+**running your command now**, not by what the session record says. A faked run, a run that
+passed before a later edit, or a count that doesn't match all come out FALSE if your command
+fails now. Each command runs at most once per check. Only the commands in this file are ever run,
+never anything from the transcript. Use `--no-rerun` to skip it.
+
 ## What it checks
 
 | claim | example | evidence |
@@ -91,12 +107,14 @@ Requires Node 18 or later. No dependencies. Works with Claude Code transcripts t
 ## What it does not do
 
 - **It doesn't judge your code.** PROVEN means "the tests ran and passed", not "the tests are good".
-- **It sees only the session record and the working tree.** An agent that claims nothing passes
-  trivially, and the tool says so: "Nothing claimed is nothing proven".
+- **Without re-run mode, it trusts the session record.** That catches honest mistakes. An agent
+  that controls the shell could fake a run, so turn on re-run mode where that matters.
+- **An agent that claims nothing passes trivially**, and the tool says so: "Nothing claimed is
+  nothing proven".
 - **Claims are found by pattern, not by a model.** A claim phrased in an unusual way is left
   ungraded, and the count of ungraded sentences is always printed. Nothing ungraded is counted as passed.
-- **It never runs anything from the transcript.** The transcript is data. The only commands it
-  runs are `git` read commands on your repository, with fixed arguments.
+- **It never runs anything from the transcript.** The transcript is data. It runs `git` read
+  commands with fixed arguments and, in re-run mode, the commands you wrote in `receipts.config.json`.
 - **Local only.** No network, no telemetry, no account.
 
 ## Roadmap

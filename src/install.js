@@ -23,7 +23,7 @@ export function install({ user = false, strict = false, dir = process.cwd() } = 
   }
   settings.hooks ??= {};
   settings.hooks.Stop ??= [];
-  settings.hooks.Stop.push({ hooks: [{ type: 'command', command, timeout: 60 }] });
+  settings.hooks.Stop.push({ hooks: [{ type: 'command', command, timeout: 600 }] });
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, JSON.stringify(settings, null, 2) + '\n');
   return `Installed the Stop hook in ${file}${existsSync(file + '.before-receipts') ? ` (backup: ${file}.before-receipts)` : ''}.\nFrom now on the agent cannot finish with a FALSE or STALE claim without being sent back once to prove or correct it.`;

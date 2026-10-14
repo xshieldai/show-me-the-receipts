@@ -3,6 +3,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { checkClaims, repoRoot } from './check.js';
 import { extractClaims } from './claims.js';
+import { loadConfig, rerunClaims } from './rerun.js';
 import { finalMessage, parseTranscript } from './transcript.js';
 
 export { exitCodeFor, render } from './report.js';
@@ -13,8 +14,12 @@ export function grade(transcriptPath, opts = {}) {
   const final = opts.finalText ? { text: opts.finalText, index: events.length } : finalMessage(events);
   const { claims, ungraded, sentenceCount } = extractClaims(final.text);
   const repo = opts.repo ?? repoRoot(cwd);
-  const results = checkClaims(claims, events, final.index, { repo });
-  return { results, ungraded, sentenceCount, sessionId, repo, source: transcriptPath, finalMessage: final.text };
+  let results = checkClaims(claims, events, final.index, { repo });
+  // Re-run mode: when the person has written receipts.config.json, the configured commands settle the claim.
+  const cfg = opts.rerun === false ? null : loadConfig(repo);
+  const reran = Boolean(cfg && cfg.rerun && Object.keys(cfg.commands).length);
+  if (reran) results = rerunClaims(results, repo, cfg, opts.runCommand);
+  return { reran, results, ungraded, sentenceCount, sessionId, repo, source: transcriptPath, finalMessage: final.text };
 }
 
 // Claude Code keeps a project's sessions under ~/.claude/projects/<cwd with every non-alphanumeric as '->.

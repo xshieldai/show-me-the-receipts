@@ -367,3 +367,71 @@ test('real runs still count after cd, env, timeout and &&', () => {
   }
   assert.deepEqual(commandSegments('a; b && c | d # e "f;g"'), ['a', 'b', 'c', 'd']);
 });
+
+// ---------- E1: re-run mode ----------
+
+import { initConfig } from '../src/rerun.js';
+
+function rerunRepo(testScript, extra = {}) {
+  const dir = repo({
+    'package.json': JSON.stringify({ name: 'r', scripts: { test: testScript, ...extra } }),
+    'receipts.config.json': JSON.stringify({ rerun: true, timeoutSec: 30, commands: { test: 'npm test --silent' } }),
+  });
+  return dir;
+}
+
+test('re-run: a spoofed run in the session is caught by running the tests now', () => {
+  const dir = rerunRepo('node -e "process.exit(1)"');
+  const p = session(dir).prompt('go').bash('npm test', '# pass 42\n# fail 0').say('All tests pass.').write();
+  const r = grade(p);
+  assert.equal(r.reran, true);
+  assert.deepEqual(verdicts(r), ['FALSE']);
+  assert.match(r.results[0].why, /re-run now: `npm test --silent` exited 1/);
+});
+
+test('re-run: a claim with no receipt in the session is PROVEN when the tests pass now', () => {
+  const dir = rerunRepo('node -e "console.log(\'# pass 3\')"');
+  const p = session(dir).prompt('go').edit(join(dir, 'a.js')).say('All tests pass.').write();
+  const r = grade(p);
+  assert.deepEqual(verdicts(r), ['PROVEN']);
+  assert.match(r.results[0].why, /exited 0/);
+});
+
+test('re-run: a claimed count is checked against the run made now', () => {
+  const dir = rerunRepo('node -e "console.log(\'# pass 40\\n# fail 0\')"');
+  const p = session(dir).prompt('go').say('All 42 tests pass.').write();
+  assert.deepEqual(verdicts(grade(p)), ['FALSE']);
+});
+
+test('re-run: --no-rerun and a missing config leave the session-record verdict alone', () => {
+  const dir = rerunRepo('node -e "process.exit(1)"');
+  const p = session(dir).prompt('go').bash('npm test', '# pass 3\n# fail 0').say('All tests pass.').write();
+  assert.deepEqual(verdicts(grade(p, { rerun: false })), ['PROVEN']);
+  const plain = repo({ 'a.js': '' });
+  assert.equal(grade(session(plain).prompt('go').bash('npm test', '# pass 3\n# fail 0').say('Tests pass.').write()).reran, false);
+});
+
+test('re-run: each configured command runs once however many claims it settles', () => {
+  const dir = rerunRepo('true');
+  let calls = 0;
+  const run = () => { calls++; return { code: 0, timedOut: false, seconds: '0.1', output: '' }; };
+  const p = session(dir).prompt('go').say('All tests pass.\nThe test suite is green.').write();
+  grade(p, { runCommand: run });
+  assert.equal(calls, 1);
+});
+
+test('re-run: nothing from the transcript is ever run', () => {
+  const dir = rerunRepo('true');
+  const marker = join(dir, 'pwned');
+  let ran = [];
+  const run = (cmd) => { ran.push(cmd); return { code: 0, timedOut: false, seconds: '0', output: '' }; };
+  const p = session(dir).prompt('go').bash(`npm test; touch ${marker}`, '# pass 1\n# fail 0').say('All tests pass.').write();
+  grade(p, { runCommand: run });
+  assert.deepEqual(ran, ['npm test --silent']);
+});
+
+test('init proposes commands from package.json and never overwrites', () => {
+  const dir = repo({ 'package.json': JSON.stringify({ scripts: { test: 'jest', build: 'tsc', typecheck: 'tsc --noEmit' } }) });
+  assert.match(initConfig(dir), /test: npm test[\s\S]*build: npm run build[\s\S]*typecheck: npm run typecheck/);
+  assert.match(initConfig(dir), /already exists/);
+});

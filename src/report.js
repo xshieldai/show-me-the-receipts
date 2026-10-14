@@ -11,10 +11,11 @@ export function exitCodeFor(results) {
   return 0;
 }
 
-export function render({ results, ungraded, sentenceCount, source }, { color = false, verbose = false } = {}) {
+export function render({ results, ungraded, sentenceCount, source, reran }, { color = false, verbose = false } = {}) {
   const c = (code, s) => (color ? code + s + RESET : s);
   const out = [];
   out.push(c('\x1b[1m', '🧾 show me the receipts') + c(DIM, `  ${source}`));
+  if (reran) out.push(c(DIM, 're-run mode: claims the configured commands can settle were checked by running them now'));
   out.push('');
   if (!results.length) {
     out.push(`No checkable claims in the agent's last message (${sentenceCount} sentence(s) read).`);

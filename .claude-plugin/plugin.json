@@ -1,6 +1,6 @@
 {
   "name": "show-me-the-receipts",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "Your agent says it's done. Show me the receipts. A Stop hook that checks the agent's claims (tests pass, build succeeds, file updated, wired in) against the session.",
   "license": "MIT"
 }

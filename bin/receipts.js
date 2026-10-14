@@ -7,12 +7,14 @@ import { join } from 'node:path';
 import { readHookInput, runStopHook } from '../src/hook.js';
 import { exitCodeFor, grade, latestTranscript, render } from '../src/index.js';
 import { install } from '../src/install.js';
+import { initConfig } from '../src/rerun.js';
 
 const HELP = `show-me-the-receipts: check what your coding agent says it did.
 
 Usage:
   receipts last                 grade the newest Claude Code session for this directory
   receipts <transcript.jsonl>   grade one session transcript
+  receipts init                 write receipts.config.json: the commands to re-run (read it after)
   receipts install [--user]     add the Stop hook to .claude/settings.json (or ~/.claude with --user)
   receipts hook [--strict]      run as a Claude Code Stop hook (reads the hook's JSON on stdin)
 
@@ -21,6 +23,7 @@ Options:
   --json         print the result as JSON
   --save         also write .receipts/<session-id>.json in the repository
   --verbose      show the command behind each piece of evidence
+  --no-rerun     do not re-run the commands in receipts.config.json
 
 Verdicts:
   PROVEN      the session shows it happened (evidence attached)
@@ -45,6 +48,10 @@ function main(argv) {
     if (stdout) process.stdout.write(stdout + '\n');
     return code;
   }
+  if (positional[0] === 'init') {
+    console.log(initConfig(process.cwd()));
+    return 0;
+  }
   if (positional[0] === 'install') {
     console.log(install({ user: flag('--user'), strict: flag('--strict') }));
     return 0;
@@ -59,7 +66,7 @@ function main(argv) {
     }
   }
 
-  const report = grade(path, { repo: value('--repo') });
+  const report = grade(path, { repo: value('--repo'), rerun: flag('--no-rerun') ? false : undefined });
   const code = exitCodeFor(report.results);
 
   if (flag('--save') && report.repo) {
