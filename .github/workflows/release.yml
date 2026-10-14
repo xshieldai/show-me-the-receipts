@@ -37,7 +37,7 @@ jobs:
           [ "${GITHUB_REF_NAME#v}" = "$V" ] || { echo "tag $GITHUB_REF_NAME does not match version $V - refusing"; exit 1; }
 
       - name: Test
-        run: node --test test/
+        run: npm test
 
       - name: Refuse if a tracked file changed
         run: |
