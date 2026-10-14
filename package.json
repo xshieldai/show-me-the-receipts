@@ -1,0 +1,20 @@
+{
+  "name": "show-me-the-receipts",
+  "version": "0.1.0",
+  "description": "Your AI coding agent says it's done. Show me the receipts. Checks an agent's claims (tests pass, build succeeds, file updated, wired in) against what actually happened in the session.",
+  "type": "module",
+  "bin": {
+    "receipts": "bin/receipts.js",
+    "show-me-the-receipts": "bin/receipts.js"
+  },
+  "exports": "./src/index.js",
+  "files": ["bin", "src", "README.md", "LICENSE"],
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": ["ai", "agent", "claude-code", "coding-agent", "verification", "receipts", "hooks"],
+  "license": "MIT"
+}
