@@ -129,3 +129,10 @@ test('Action: writes the summary, fails on FALSE, posts one comment and then upd
   assert.deepEqual(calls, ['GET /repos/o/r/issues/7/comments?per_page=100', 'POST /repos/o/r/issues/7/comments', 'GET /repos/o/r/issues/7/comments?per_page=100', 'PATCH /repos/o/r/issues/comments/99']);
   assert.match(second.out, /updated in the pull request/);
 });
+
+test('PR: a claim quoted in the description is not a claim (found live on PR #1)', () => {
+  const { dir, base } = prRepo({ head: { 'CHANGELOG.md': '# Changelog\n' } });
+  const body = 'The first version of this description held a false claim on purpose ("Also updated `src/hook.js`"), and the Action marked it FALSE.\n- Added `CHANGELOG.md`.';
+  const r = gradePullRequest({ body, repo: dir, base });
+  assert.deepEqual(r.results.map((x) => [x.verdict, x.file]), [['PROVEN', 'CHANGELOG.md']]);
+});

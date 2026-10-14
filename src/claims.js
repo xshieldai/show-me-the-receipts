@@ -44,7 +44,8 @@ const HEDGED = /\b(?:should|would|ought to|probably|likely|might|may|hopefully)\
 const DONE = /^(?:all\s+)?(?:done|finished|completed?)\b(?!\s+(?:on|by|from)\s+(?:your|you))|\b(?:everything|it|the (?:task|work|change|fix|feature))\s+(?:is|'s)\s+(?:now\s+)?(?:all\s+)?(?:done|complete|finished)\b/i;
 
 function claimsIn(sentence) {
-  const s = sentence.replace(/\*\*/g, '');
+  // A claim inside quotation marks is being quoted, not made: 'it held a false claim ("Also updated `x.js`")'.
+  const s = sentence.replace(/\*\*/g, '').replace(/["“][^"”]*\s[^"”]*["”]/g, ' ');
   const plain = s.replace(/`/g, ''); // "`npm test` passes" is a test claim too
   if (HEDGE.test(s)) return [];
   const out = [];
