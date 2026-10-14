@@ -13,6 +13,44 @@ export const NO_RECEIPT = 'NO RECEIPT';
 
 const TEST_CMD = /(?:^|[\s;&|(])(?:npm\s+(?:run\s+)?test|yarn\s+(?:run\s+)?test|pnpm\s+(?:run\s+)?test|bun\s+(?:run\s+)?test|npx\s+(?:jest|vitest|mocha|playwright\s+test)|jest|vitest(?:\s+run)?|mocha|node\s+--test|deno\s+test|(?:python3?\s+-m\s+)?pytest|go\s+test|cargo\s+test|mvn\s+(?:\S+\s+)*test|gradlew?\s+test|rspec|phpunit|tox|make\s+(?:\S+\s+)*test|ctest|dotnet\s+test|(?:node|bun|deno|tsx|ts-node)\s+(?:--\S+\s+)*\S*[\w-]\.(?:test|spec)\.[cm]?[jt]sx?|python3?\s+(?:-I\s+)?\S*test_\w+\.py|\S*\.(?:test|spec)\.sh)(?![\w.])/;
 
+// A runner counts only where a command starts: not inside echo text, a comment, a quoted string or a heredoc.
+// `echo npm test; echo "# pass 42"` is not a test run.
+export function commandSegments(cmd) {
+  let s = String(cmd).replace(/<<-?\s*(['"]?)(\w+)\1[^\n]*\n[\s\S]*?\n\s*\2\s*(?=\n|$)/g, ' '); // heredoc bodies
+  let out = '';
+  let quote = null;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (quote) {
+      if (c === quote) quote = null;
+      out += c === '\n' ? ' ' : quote === c ? c : '_'; // keep quotes, blank what is inside them
+      continue;
+    }
+    if (c === "'" || c === '"') { quote = c; out += c; continue; }
+    if (c === '#' && (i === 0 || /\s/.test(s[i - 1]))) { while (i < s.length && s[i] !== '\n') i++; out += '\n'; continue; }
+    out += c;
+  }
+  return out
+    .split(/\n|;|&&|\|\||\||&/)
+    .map((seg) =>
+      seg.trim()
+        .replace(/^(?:\w+=\S*\s+)+/, '')
+        .replace(/^(?:(?:timeout|nice|time|env|command|exec|stdbuf|xvfb-run)(?:\s+-\S+)*(?:\s+\d+[smh]?)?\s+)+/, '')
+        .replace(/^\(\s*/, '')
+        .replace(/^(?:npx|bunx|pnpm\s+(?:exec|dlx)|yarn\s+(?:exec|dlx))(?:\s+-\S+)*\s+/, '')
+    )
+    .filter(Boolean);
+}
+
+function runsRunner(cmd, re) {
+  return commandSegments(cmd).some((seg) => {
+    if (/^(?:echo|printf|cat|grep|rg|sed|awk|man|which|type)\b/.test(seg)) return false;
+    if (/\s--?(?:version|help|h|v)(?:\s|$)/.test(seg)) return false;
+    const m = re.exec(seg);
+    return Boolean(m) && m.index === 0;
+  });
+}
+
 const KIND_CMD = {
   build: /(?:^|[\s;&|(])(?:(?:npm|yarn|pnpm|bun)\s+(?:run\s+)?build|tsc(?!\s+--noEmit)|vite\s+build|next\s+build|webpack|esbuild|rollup|cargo\s+build|go\s+build|mvn\s+(?:\S+\s+)*(?:package|install|compile)|gradlew?\s+build|make(?:\s|$)|dotnet\s+build)\b/,
   lint: /(?:^|[\s;&|(])(?:(?:npm|yarn|pnpm|bun)\s+(?:run\s+)?lint|eslint|biome\s+(?:lint|check)|ruff|flake8|pylint|cargo\s+clippy|golangci-lint|rubocop|stylelint)\b/,
@@ -59,7 +97,7 @@ export function parseTestSummary(text) {
 function checkTests(claim, before) {
   const runs = before
     .map((e, i) => ({ e, i }))
-    .filter(({ e }) => e.kind === 'command' && TEST_CMD.test(e.command));
+    .filter(({ e }) => e.kind === 'command' && runsRunner(e.command, TEST_CMD));
   if (!runs.length) return { verdict: NO_RECEIPT, why: 'no test command ran in this session' };
 
   const graded = runs.map(({ e, i }) => ({ e, i, ...gradeRun(e) }));
@@ -117,7 +155,7 @@ function piped(cmd, output = '') {
 
 function checkCommand(claim, before) {
   const re = KIND_CMD[claim.kind];
-  const runs = before.map((e, i) => ({ e, i })).filter(({ e }) => e.kind === 'command' && re.test(e.command));
+  const runs = before.map((e, i) => ({ e, i })).filter(({ e }) => e.kind === 'command' && runsRunner(e.command, re));
   if (!runs.length) return { verdict: NO_RECEIPT, why: `no ${claim.kind} command ran in this session` };
   const { e, i } = runs[runs.length - 1];
   const r = e.result;
